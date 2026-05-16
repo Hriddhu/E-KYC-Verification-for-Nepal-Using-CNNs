@@ -70,8 +70,7 @@ class LivenessResult:
     passed: bool
     message: str
     image_path: str | None = None
-
-
+    
 class LivenessSession:
     def __init__(self):
         self.tasks = ["BLINK", "TURN_LEFT", "TURN_RIGHT", "OPEN_MOUTH"]
