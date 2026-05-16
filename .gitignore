@@ -1,2 +1,6 @@
-.venv
-myenv/
+venv/
+
+**/__pycache__/
+**/crops/
+**/extracted_faces/
+**/uploads/

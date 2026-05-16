@@ -9,7 +9,7 @@ if script_dir not in sys.path:
     sys.path.append(script_dir)
 
 try:
-    from ml.docservice.src.detect_crop import DocumentDetector
+    from ml.docservice.detect_crop import DocumentDetector
 except ImportError:
     from detect_crop import DocumentDetector
 
