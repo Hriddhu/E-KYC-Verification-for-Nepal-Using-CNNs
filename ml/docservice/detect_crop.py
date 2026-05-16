@@ -1,7 +1,8 @@
 import os
+import shutil
+
 import cv2
 from ultralytics import YOLO
-import shutil 
 
 class DocumentDetector:
     def __init__(self, front_model_path=None, back_model_path=None):
@@ -41,13 +42,21 @@ class DocumentDetector:
                 class_id    = int(box.cls[0])
                 class_name  = model.names[class_id]
 
-                # In _run_detection, add slight bbox padding before cropping
-                pad = 10
                 h_img, w_img = img.shape[:2]
-                x1 = max(0, x1 - pad)
-                y1 = max(0, y1)
-                x2 = min(w_img, x2 + pad)
-                y2 = min(h_img, y2)
+                box_w = max(1, x2 - x1)
+                box_h = max(1, y2 - y1)
+
+                if class_name.lower() == "photo":
+                    pad_x = max(18, int(box_w * 0.18))
+                    pad_y = max(18, int(box_h * 0.18))
+                else:
+                    pad_x = max(10, int(box_w * 0.04))
+                    pad_y = max(10, int(box_h * 0.04))
+
+                x1 = max(0, x1 - pad_x)
+                y1 = max(0, y1 - pad_y)
+                x2 = min(w_img, x2 + pad_x)
+                y2 = min(h_img, y2 + pad_y)
 
                 cropped_img = img[y1:y2, x1:x2]
                 crop_filename = f"crop_{class_name}_{i}.jpg"
