@@ -17,3 +17,14 @@ torch
 torchvision
 timm
 albumentations
+
+# pip install fastapi==0.111.1 uvicorn[standard]==0.30.6 python-multipart==0.0.9 pyyaml
+# pip install numpy==1.26.4 scikit-learn scikit-image pillow rapidfuzz
+# pip install opencv-python==4.10.0.84 albumentations
+# pip install torch torchvision torchaudio
+# pip install timm
+# pip install ultralytics
+# pip install easyocr
+# pip install onnxruntime
+# pip install insightface
+# pip install mediapipe==0.10.14
