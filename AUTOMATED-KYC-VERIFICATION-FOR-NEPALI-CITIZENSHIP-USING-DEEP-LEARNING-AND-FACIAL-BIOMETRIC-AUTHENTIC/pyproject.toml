@@ -1,0 +1,7 @@
+[project]
+name = "automated-kyc-verification-for-nepali-citizenship-using-deep-learning-and-facial-biometric-authentic"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
