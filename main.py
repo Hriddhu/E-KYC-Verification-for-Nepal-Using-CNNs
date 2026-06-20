@@ -1,48 +1,48 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+
+import easyocr
+import torch
+from insightface.app import FaceAnalysis
+from ultralytics import YOLO
+
 from backend.core import config
-from config import TAMPERING_MODEL_PATH,YOLO_FRONT_MODEL_PATH,YOLO_BACK_MODEL_PATH,PASSIVE_LIVENESS_MODEL_PATH
 
 
-# ── Model state (preloaded at startup) ──────────────────
-class ModelState:
-    pass
-
-
-# ── Lifespan (startup + shutdown) ───────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # load all models here once
-    # store in app.state
-    app.state.tampering_model = TAMPERING_MODEL_PATH
-    app.state.liveness_model =  PASSIVE_LIVENESS_MODEL_PATH
-    app.state.yolo_front_model =  YOLO_FRONT_MODEL_PATH
-    app.state.yolo_back_model = YOLO_BACK_MODEL_PATH
+    print("Loading models into RAM...")
+
+    app.state.yolo_front = YOLO(str(config.YOLO_FRONT_MODEL_PATH))
+    app.state.yolo_back = YOLO(str(config.YOLO_BACK_MODEL_PATH))
+
+    app.state.ocr_reader = easyocr.Reader(config.EASYOCR_LANGUAGES, gpu=False)
+
+    app.state.face_model = FaceAnalysis(
+        name=config.FACE_MODEL_NAME,
+        providers=["CPUExecutionProvider"]
+    )
+    app.state.face_model.prepare(ctx_id=-1, det_size=(640, 640))
+
+    # liveness + tampering — torch.load pattern, adapt based on
+    # how passiveliveness.py and predict_baseline.py actually load their models
+
+    print("All models loaded. Server ready.")
     yield
-    
-    del app.state.face_detector
-    del app.state.ocr_reader
-    del app.state.face_model
-    del app.state.liveness_model
-    # cleanup on shutdown
+    print("Shutting down...")
 
 
-# ── App ─────────────────────────────────────────────────
-app = FastAPI(
-    title="KYC API",
-    lifespan=lifespan
+app = FastAPI(title="KYC API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
-# ── Middleware ───────────────────────────────────────────
-
-
-# ── Health check ─────────────────────────────────────────
 @app.get("/health")
 def health():
-    pass
-
-
-# ── Routers ──────────────────────────────────────────────
-# include routers here
+    return {"status": "ok"}
