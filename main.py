@@ -26,6 +26,8 @@ async def lifespan(app: FastAPI):
     app.state.face_model.prepare(ctx_id=-1, det_size=(640, 640))
 
     # liveness + tampering — torch.load pattern, adapt based on
+    app.state.tampering_model = str(config.TAMPERING_MODEL_PATH)
+    app.state.passive_liveness= str(config.PASSIVE_LIVENESS_MODEL_PATH)
     # how passiveliveness.py and predict_baseline.py actually load their models
 
     print("All models loaded. Server ready.")
