@@ -1,6 +1,6 @@
 import cv2
-from ocr import extract_text
-from utils import KycCleaner
+from ml.ocr_service.ocr import extract_text
+from ml.ocr_service.utils import KycCleaner
 
 CLASS_NAME_MAP = {
     "citisenship-number":  "citisenship-number",
