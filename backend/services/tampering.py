@@ -10,46 +10,71 @@ from backend.core.model_loader import load_weights
 
 
 class EfficientNetBinary(nn.Module):
-    """Architecture — copy exactly from predict_baseline.py, unchanged."""
-    def __init__(self, model_name="efficientnet_b0", pretrained=False):
-        pass
+    def __init__(self, model_name: str = "efficientnet_b0", pretrained: bool = False):
+        super().__init__()
+        self.backbone = timm.create_model(
+            model_name,
+            pretrained=pretrained,
+            num_classes=0,
+            global_pool="avg",
+        )
+        in_features = self.backbone.num_features
+        self.classifier = nn.Sequential(
+            nn.Dropout(0.4),
+            nn.Linear(in_features, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2),
+            nn.Linear(256, 1),
+        )
 
     def forward(self, x):
-        pass
+        feats = self.backbone(x)
+        return self.classifier(feats)
 
 
 @lru_cache(maxsize=2)
-def get_transforms(img_size=224):
-    """
-    Preprocessing pipeline — copy exactly from predict_baseline.py.
-    Safe to cache: this is a lightweight object, not a model.
-    """
-    pass
+def get_transforms(img_size: int = 224):
+    return A.Compose([
+        A.Resize(img_size, img_size),
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        ToTensorV2(),
+    ])
 
 
 def load_tampering_model(model_path: str, device: str | None = None):
-    """
-    Called ONCE at startup.
-    1. pick device (cuda if available else cpu)
-    2. build EfficientNetBinary()
-    3. state = load_weights(model_path, device)   ← use the abstraction, not torch.load directly
-    4. model.load_state_dict(state)
-    5. model.to(device)
-    6. model.eval()
-    7. return (model, device)
-    """
-    pass
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    model = EfficientNetBinary(model_name="efficientnet_b0", pretrained=False)
+    state = load_weights(model_path, device=device)
+    model.load_state_dict(state)
+    model.to(device)
+    model.eval()
+    return model, device
 
 
 def predict_tampering(image_path: str, model, device: str, threshold: float) -> dict:
-    """
-    Called on EVERY request — model already loaded, just inference.
-    1. read image with cv2, convert BGR to RGB
-    2. apply get_transforms(), move tensor to device
-    3. run model(tensor) inside torch.no_grad()
-    4. sigmoid the output to get tampered_probability
-    5. compute genuine_probability = 1 - tampered_probability
-    6. compare against threshold to decide is_tampered
-    7. return result dict
-    """
-    pass
+    image = cv2.imread(image_path)
+    if image is None:
+        raise FileNotFoundError(f"Could not read image: {image_path}")
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    tensor = get_transforms()(image=image)["image"].unsqueeze(0).to(device)
+
+    with torch.no_grad():
+        logits = model(tensor)
+        tampered_probability = float(torch.sigmoid(logits).item())
+
+    tampered_probability = max(0.0, min(1.0, tampered_probability))
+    genuine_probability = 1.0 - tampered_probability
+    is_tampered = tampered_probability >= threshold
+
+    return {
+        "image_path": image_path,
+        "tampered_probability": round(tampered_probability, 4),
+        "genuine_probability": round(genuine_probability, 4),
+        "threshold_used": threshold,
+        "is_tampered": is_tampered,
+        "prediction": "FORGED" if is_tampered else "GENUINE",
+        "device": device,
+    }
